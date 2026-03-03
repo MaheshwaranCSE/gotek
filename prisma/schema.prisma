@@ -1,0 +1,126 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// User role enum
+enum Role {
+  SUPERADMIN
+  ADMIN
+  TEACHER
+}
+
+// Batch status enum
+enum BatchStatus {
+  DRAFT
+  PROCESSING
+  READY_TO_PRINT
+  PRINTED
+}
+
+// Models
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  password      String?
+  role          Role      @default(TEACHER)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  auditLogs AuditLog[]
+  batches   Batch[]
+}
+
+model Template {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  frontImage  String? // URL to front template image
+  backImage   String? // URL to back template image
+  fieldsData  Json // JSON defining variable bindings (x, y, mapping)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  batches Batch[]
+}
+
+model Student {
+  id             String    @id @default(cuid())
+  registrationId String? // e.g., Reg No/Roll No
+  name           String
+  class          String?
+  section        String?
+  bloodGroup     String?
+  dob            DateTime?
+  phone          String?
+  address        String?
+  parentName     String?
+  originalImage  String? // URL to original uploaded image
+  enhancedImage  String? // URL to processed/enhanced image
+  metaData       Json? // To store any extra dynamic fields
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  batchCards BatchCard[]
+}
+
+model Batch {
+  id         String      @id @default(cuid())
+  name       String
+  status     BatchStatus @default(DRAFT)
+  templateId String
+  template   Template    @relation(fields: [templateId], references: [id])
+  createdBy  String
+  user       User        @relation(fields: [createdBy], references: [id])
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  batchCards BatchCard[]
+  printJobs  PrintJob[]
+}
+
+model BatchCard {
+  id        String   @id @default(cuid())
+  batchId   String
+  studentId String
+  batch     Batch    @relation(fields: [batchId], references: [id])
+  student   Student  @relation(fields: [studentId], references: [id])
+  status    String   @default("PENDING") // e.g., PENDING, APPROVED, REJECTED
+  remarks   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([batchId, studentId])
+}
+
+model PrintJob {
+  id        String   @id @default(cuid())
+  batchId   String
+  batch     Batch    @relation(fields: [batchId], references: [id])
+  pdfUrl    String? // URL to generated A3 PDF
+  status    String   @default("GENERATING") // GENERATING, COMPLETED, FAILED
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  action    String // e.g., "USER_LOGIN", "BATCH_CREATED", "PDF_GENERATED"
+  details   Json?
+  createdAt DateTime @default(now())
+}
