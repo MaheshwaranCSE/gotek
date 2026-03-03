@@ -1,36 +1,78 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+## ID Card Automation System
 
-## Getting Started
+Next.js 16 App Router project for automated student ID card generation with role-based dashboards, bulk student import, image enhancement, dynamic template layouts, and batch PDF export (A3 sheets).
 
-First, run the development server:
+### Tech stack
+
+- **Framework**: Next.js App Router
+- **UI**: Tailwind CSS, custom dashboard components
+- **Auth**: NextAuth (credentials, role-based)
+- **DB**: PostgreSQL + Prisma
+- **Media**: Sharp (image processing), PDFKit (A3 batch PDFs)
+- **Canvas**: Fabric.js (template editor)
+
+### 1. Local setup
+
+```bash
+npm install
+```
+
+Create a `.env` file based on `.env.example`:
+
+- `DATABASE_URL` – Postgres connection string.
+- `NEXTAUTH_URL` – usually `http://localhost:3000` in dev.
+- `NEXTAUTH_SECRET` – random string (e.g. `openssl rand -hex 32`).
+
+Then run Prisma:
+
+```bash
+npx prisma migrate dev --name init
+npx prisma generate
+```
+
+Seed at least one user manually (or via a small script) with a hashed password and role: `SUPERADMIN`, `ADMIN`, or `TEACHER`.
+
+Start dev server:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Visit:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- `/login` – sign in with credentials.
+- `/dashboard/super-admin`, `/dashboard/admin`, `/dashboard/teacher` – dashboards (guarded by middleware).
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 2. Core features
 
-## Learn More
+- **Dashboards**
+  - Super Admin: high-level metrics (institutions, batches, print jobs).
+  - Admin: templates and batch overview.
+  - Teacher: recent batches and student photo tasks.
 
-To learn more about Next.js, take a look at the following resources:
+- **Student data entry**
+  - Manual form under `teacher` dashboard using React Hook Form + Zod (`/dashboard/teacher/students/new`).
+  - CSV bulk upload (`/dashboard/teacher/students/bulk-upload`) with preview and server-side validation/creation.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- **Image processing**
+  - API: `POST /api/images/process` using Sharp (resize + brightness).
+  - UI: student image editor with before/after preview and brightness slider.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- **Dynamic template engine**
+  - Fabric.js canvas editor for template layouts (`/dashboard/admin/templates/[id]/edit`).
+  - Drag-and-place fields like `name`, `registrationId`, `class`, `section`; positions saved to `Template.fieldsData`.
 
-## Deploy on Vercel
+- **Batch PDF generation**
+  - API: `POST /api/batches/[id]/pdf` builds A3 PDF using PDFKit.
+  - Up to 100 cards per batch; 3×4 grid per page; cards display key student info.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### 3. Deploying to Vercel
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. Push the repo to GitHub/GitLab.
+2. On Vercel:
+   - Import the project.
+   - Set environment variables (`DATABASE_URL`, `NEXTAUTH_URL`, `NEXTAUTH_SECRET`).
+   - Attach a Postgres add-on or provide an external Postgres URL.
+3. Run `prisma migrate deploy` via a post-deploy hook or manually in a one-off shell.
+4. Ensure `public/uploads` and `public/pdfs` behavior fits your storage strategy; for production you should switch to object storage (S3/R2) and update the image/PDF routes accordingly.
+
