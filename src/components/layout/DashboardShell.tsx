@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { ReactNode } from "react";
 import { getServerSession } from "next-auth";
-import { authOptions, Role } from "@/lib/auth";
+import { authOptions } from "@/lib/auth";
+import { Role } from "@/lib/roles";
 
 const navItemsByRole: Record<Role, { href: string; label: string }[]> = {
   [Role.SUPERADMIN]: [

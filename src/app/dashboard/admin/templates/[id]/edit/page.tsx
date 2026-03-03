@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
-import { fabric } from "fabric";
 
 type Template = {
   id: string;
@@ -25,19 +24,33 @@ const AVAILABLE_FIELDS = [
 export default function TemplateEditPage() {
   const params = useParams<{ id: string }>();
   const [template, setTemplate] = useState<Template | null>(null);
-  const canvasRef = useRef<fabric.Canvas | null>(null);
+  const canvasRef = useRef<any | null>(null);
   const canvasElRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
-    const canvas = new fabric.Canvas(canvasElRef.current!, {
-      width: CARD_WIDTH,
-      height: CARD_HEIGHT,
-      backgroundColor: "#020617",
-    });
-    canvasRef.current = canvas;
+    let isMounted = true;
+
+    const init = async () => {
+      const fabricModule = await import("fabric");
+      const fabric = (fabricModule as any).fabric ?? fabricModule.default;
+
+      if (!isMounted || !canvasElRef.current) return;
+
+      const canvas = new fabric.Canvas(canvasElRef.current, {
+        width: CARD_WIDTH,
+        height: CARD_HEIGHT,
+        backgroundColor: "#020617",
+      });
+      canvasRef.current = canvas;
+    };
+
+    void init();
 
     return () => {
-      canvas.dispose();
+      isMounted = false;
+      if (canvasRef.current) {
+        canvasRef.current.dispose();
+      }
     };
   }, []);
 
@@ -53,7 +66,7 @@ export default function TemplateEditPage() {
           fields: { key: string; x: number; y: number }[];
         };
         data.fields.forEach((field) => {
-          const text = new fabric.Text(field.key, {
+          const text = new canvasRef.current.constructor.Text(field.key, {
             left: field.x,
             top: field.y,
             fill: "#e5e7eb",
@@ -70,7 +83,7 @@ export default function TemplateEditPage() {
 
   const addField = (key: string) => {
     if (!canvasRef.current) return;
-    const text = new fabric.Text(key, {
+    const text = new canvasRef.current.constructor.Text(key, {
       left: CARD_WIDTH / 2 - 60,
       top: CARD_HEIGHT / 2,
       fill: "#e5e7eb",
@@ -85,9 +98,9 @@ export default function TemplateEditPage() {
 
     const fields = (canvasRef.current
       .getObjects()
-      .filter((obj) => (obj as fabric.Text & { dataField?: string }).dataField)
-      .map((obj) => {
-        const typed = obj as fabric.Text & { dataField?: string };
+      .filter((obj: any) => obj.dataField)
+      .map((obj: any) => {
+        const typed = obj as any;
         return {
           key: typed.dataField ?? "",
           x: typed.left ?? 0,

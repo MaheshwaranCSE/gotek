@@ -1,8 +1,10 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import sharp from "sharp";
 import { randomUUID } from "crypto";
 import { promises as fs } from "fs";
 import path from "path";
+
+export const runtime = "nodejs";
 
 type Body = {
   imageBase64: string;
@@ -11,7 +13,7 @@ type Body = {
   height?: number;
 };
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
     const body = (await request.json()) as Body;
     const { imageBase64, brightness = 1, width = 400, height = 600 } = body;
